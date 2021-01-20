@@ -24,7 +24,10 @@ public class UserDaoJDBCImpl implements UserDao {
 
         try(Connection conn = util.getConnection();
             Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(false);
             stmt.execute(sql);
+            conn.commit();
+            conn.setAutoCommit(true);
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
@@ -35,7 +38,10 @@ public class UserDaoJDBCImpl implements UserDao {
 
         try (Connection conn = util.getConnection();
              Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(false);
             stmt.execute(sql);
+            conn.commit();
+            conn.setAutoCommit(true);
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
@@ -47,12 +53,15 @@ public class UserDaoJDBCImpl implements UserDao {
 
         try (Connection conn = util.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
+            conn.setAutoCommit(false);
 
             stmt.setString(1, name);
             stmt.setString(2, lastName);
             stmt.setByte(3, age);
-
             stmt.executeUpdate();
+
+            conn.commit();
+            conn.setAutoCommit(true);
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
@@ -64,10 +73,13 @@ public class UserDaoJDBCImpl implements UserDao {
 
         try (Connection conn = util.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
+            conn.setAutoCommit(false);
 
             stmt.setLong(1, id);
-
             stmt.executeUpdate();
+
+            conn.commit();
+            conn.setAutoCommit(true);
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
@@ -103,7 +115,10 @@ public class UserDaoJDBCImpl implements UserDao {
 
         try (Connection conn = util.getConnection();
              Statement stmt = conn.createStatement()) {
+            conn.setAutoCommit(false);
             stmt.execute(sql);
+            conn.commit();
+            conn.setAutoCommit(true);
         } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
