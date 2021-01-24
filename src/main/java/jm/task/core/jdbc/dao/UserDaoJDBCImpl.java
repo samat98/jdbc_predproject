@@ -3,6 +3,7 @@ package jm.task.core.jdbc.dao;
 import jm.task.core.jdbc.model.User;
 import jm.task.core.jdbc.util.Util;
 
+import javax.transaction.Transactional;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,60 +11,68 @@ import java.util.List;
 public class UserDaoJDBCImpl implements UserDao {
 
     private Util util = new Util();
+    private Connection conn;
+    private Statement stmt;
+    private PreparedStatement pstmt;
+    private ResultSet res;
 
     public UserDaoJDBCImpl() {
     }
 
     public void createUsersTable() {
-        String sql = "CREATE TABLE IF NOT EXISTS Users (" +
+        String sql = "CREATE TABLE Users (" +
                 "id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY," +
                 "name VARCHAR(30) NOT NULL," +
                 "lastName VARCHAR(30) NOT NULL," +
                 "age INT(3) NOT NULL" +
                 ") ENGINE=InnoDB";
 
-        try(Connection conn = util.getConnection();
-            Statement stmt = conn.createStatement()) {
-            conn.setAutoCommit(false);
-            stmt.execute(sql);
+        try {
+            prepareConnection();
+            stmt = conn.createStatement();
+            System.out.println(conn.getMetaData().supportsSavepoints());
+            stmt.executeUpdate(sql);
             conn.commit();
-            conn.setAutoCommit(true);
-        } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            fillCatch(e);
+        } finally {
+            closeObj(stmt);
+            closeObj(conn);
         }
     }
 
     public void dropUsersTable() {
-        String sql = "DROP table IF EXISTS Users";
+        String sql = "DROP table Users";
 
-        try (Connection conn = util.getConnection();
-             Statement stmt = conn.createStatement()) {
-            conn.setAutoCommit(false);
-            stmt.execute(sql);
+        try {
+            prepareConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.executeUpdate(sql);
             conn.commit();
-            conn.setAutoCommit(true);
-        } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            fillCatch(e);
+        } finally {
+            closeObj(stmt);
+            closeObj(conn);
         }
     }
 
     public void saveUser(String name, String lastName, byte age) {
         String sql = "INSERT INTO Users (name, lastName, age)" +
                 "VALUES (?, ?, ?)";
-
-        try (Connection conn = util.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            conn.setAutoCommit(false);
-
-            stmt.setString(1, name);
-            stmt.setString(2, lastName);
-            stmt.setByte(3, age);
-            stmt.executeUpdate();
-
+        try {
+            prepareConnection();
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, name);
+            pstmt.setString(2, lastName);
+            pstmt.setByte(3, age);
+            pstmt.executeUpdate();
             conn.commit();
-            conn.setAutoCommit(true);
-        } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            fillCatch(e);
+        } finally {
+            closeObj(pstmt);
+            closeObj(conn);
         }
     }
 
@@ -71,17 +80,17 @@ public class UserDaoJDBCImpl implements UserDao {
         String sql = "DELETE FROM Users WHERE id=?";
 
 
-        try (Connection conn = util.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            conn.setAutoCommit(false);
-
-            stmt.setLong(1, id);
-            stmt.executeUpdate();
-
+        try {
+            prepareConnection();
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setLong(1, id);
+            pstmt.executeUpdate();
             conn.commit();
-            conn.setAutoCommit(true);
-        } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            fillCatch(e);
+        } finally {
+            closeObj(pstmt);
+            closeObj(conn);
         }
     }
 
@@ -89,10 +98,10 @@ public class UserDaoJDBCImpl implements UserDao {
         String sql = "SELECT * FROM Users";
         List<User> users = new ArrayList<>();
 
-        try (Connection conn = util.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet res = stmt.executeQuery(sql)) {
-
+        try {
+            prepareConnection();
+            stmt = conn.createStatement();
+            res = stmt.executeQuery(sql);
             while (res.next()) {
                 User user = new User();
                 user.setId(res.getLong("id"));
@@ -102,8 +111,12 @@ public class UserDaoJDBCImpl implements UserDao {
 
                 users.add(user);
             }
-        } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            fillCatch(e);
+        } finally {
+            closeObj(res);
+            closeObj(pstmt);
+            closeObj(conn);
         }
 
         return users;
@@ -113,14 +126,42 @@ public class UserDaoJDBCImpl implements UserDao {
         String sql = "truncate Users";
 
 
-        try (Connection conn = util.getConnection();
-             Statement stmt = conn.createStatement()) {
-            conn.setAutoCommit(false);
+        try {
+            prepareConnection();
+            stmt = conn.createStatement();
             stmt.execute(sql);
             conn.commit();
             conn.setAutoCommit(true);
-        } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            fillCatch(e);
+        } finally {
+            closeObj(pstmt);
+            closeObj(conn);
         }
+    }
+
+    private void prepareConnection() throws SQLException{
+        conn = util.getConnection();
+        conn.setAutoCommit(false);
+    }
+
+    private void closeObj(AutoCloseable obj) {
+        if (obj != null) {
+            try {
+                conn.setAutoCommit(true);
+                obj.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void fillCatch(Exception e) {
+        try {
+            conn.rollback();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        e.printStackTrace();
     }
 }
